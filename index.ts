@@ -1,15 +1,29 @@
 import http from "http";
-import { DAILY_PERCENTAGE_GROWTH, telegramBot } from "./config";
+import { DAILY_PERCENTAGE_GROWTH, db, telegramBot } from "./config";
 import { calculateDays, calculateInvestmentGrowth, calculatePercentageGrowth, createUser, findUserByInviteCode, formatAmount, getRandomItem, getUser, hasActiveBot, hasFunds, hasWallet, updateUser } from "./utils";
 
 const PORT = process.env.PORT || 4000;
 
-http.createServer((_req, res) => {
+http.createServer((req, res) => {
+  const url = req.url || "/";
+  
+  // Expose db.json endpoint
+  if (url === "/db" || url === "/db.json") {
+    res.writeHead(200, { 
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*"
+    });
+    res.end(JSON.stringify(db, null, 2));
+    return;
+  }
+  
+  // Default health check endpoint
   res.writeHead(200, { "Content-Type": "text/plain" });
   res.end("Snipe Trader is running");
 }).listen(PORT, () => {
   console.log(`Listening on port ${PORT}`);
 });
+
 
 // Start command
 telegramBot.onText(/\/start/, async (msg) => {
