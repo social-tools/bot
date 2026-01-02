@@ -2,7 +2,7 @@ import http from "http";
 import { DAILY_PERCENTAGE_GROWTH, telegramBot } from "./config";
 import { calculateDays, calculateInvestmentGrowth, calculatePercentageGrowth, createUser, findUserByInviteCode, formatAmount, getRandomItem, getUser, hasActiveBot, hasFunds, hasWallet, updateUser } from "./utils";
 
-const PORT = 3000;
+const PORT = process.env.PORT || 4000;
 
 http.createServer((_req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
