@@ -1,62 +1,115 @@
-import fs from "fs";
+import { eq } from "drizzle-orm";
 import { db } from "./config";
-import { User } from "./types";
+import type { User } from "./schema";
+import { users } from "./schema";
 
-export function findUserByInviteCode(invitationCode: number) {
-    const user = db.users.find((user: User) => user.invitationCode === invitationCode);
-    return user;
+// App-level user type with invites as array and funds as number
+export type AppUser = Omit<User, "invites" | "funds" | "botActiveSince"> & { 
+    invites: number[];
+    funds: number;
+    botActiveSince: string | null; // Keep as ISO string for compatibility
+};
+
+// Helper to convert database user to app user format
+function dbUserToAppUser(dbUser: User): AppUser {
+    return {
+        id: dbUser.id,
+        walletAddress: dbUser.walletAddress,
+        botActiveSince: dbUser.botActiveSince instanceof Date 
+            ? dbUser.botActiveSince.toISOString() 
+            : (dbUser.botActiveSince as string | null),
+        invitationCode: dbUser.invitationCode,
+        funds: typeof dbUser.funds === "string" ? parseFloat(dbUser.funds) : (dbUser.funds as unknown as number),
+        invites: JSON.parse(dbUser.invites || "[]"),
+    };
 }
 
-export function getUser(userId: number) {
-    const user = db.users.find((user: User) => user.id === userId);
-    return user;
+export async function findUserByInviteCode(invitationCode: number): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.invitationCode, invitationCode));
+    return user ? dbUserToAppUser(user) : undefined;
 }
 
-export function createUser(userId: number, data: Partial<User> = {}) {
-    const user = getUser(userId);
-    if (user) {
-        return user;
+export async function getUser(userId: number): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user ? dbUserToAppUser(user) : undefined;
+}
+
+export async function createUser(userId: number, data: Partial<AppUser> = {}): Promise<AppUser> {
+    const existingUser = await getUser(userId);
+    if (existingUser) {
+        return existingUser;
     }
     
-    const newUser: User = {
+    const invitationCode = data.invitationCode || Math.floor(100000 + Math.random() * 900000);
+    const invites = data.invites || [];
+    
+    const fundsValue = data.funds ?? 0;
+    const newUser = {
         id: userId,
-        walletAddress: null,
-        funds: 0,
-        botActiveSince: null,
-        invitationCode: Math.floor(100000 + Math.random() * 900000),
-        invites: [],
-        ...data
+        walletAddress: data.walletAddress ?? null,
+        funds: String(fundsValue),
+        botActiveSince: data.botActiveSince ? new Date(data.botActiveSince) : null,
+        invitationCode,
+        invites: JSON.stringify(invites),
     };
     
-    db.users.push(newUser);
-    fs.writeFileSync("db.json", JSON.stringify(db, null, 2));
-    return newUser;
+    await db.insert(users).values(newUser);
+    
+    return {
+        id: userId,
+        walletAddress: data.walletAddress ?? null,
+        funds: fundsValue,
+        botActiveSince: data.botActiveSince ?? null,
+        invitationCode,
+        invites,
+    };
 }
 
-export function updateUser(userId: number, userData: Partial<User>) {
-    let user = getUser(userId);
+export async function updateUser(userId: number, userData: Partial<AppUser>): Promise<AppUser> {
+    let user = await getUser(userId);
     if (!user) {
         return createUser(userId, userData);
     }
-    Object.assign(user, userData);
-    fs.writeFileSync("db.json", JSON.stringify(db, null, 2));
-    return user;
+    
+    const updateData: Partial<typeof users.$inferInsert> = {};
+    
+    if (userData.walletAddress !== undefined) {
+        updateData.walletAddress = userData.walletAddress;
+    }
+    if (userData.funds !== undefined) {
+        updateData.funds = String(userData.funds);
+    }
+    if (userData.botActiveSince !== undefined) {
+        updateData.botActiveSince = userData.botActiveSince ? new Date(userData.botActiveSince) : null;
+    }
+    if (userData.invitationCode !== undefined) {
+        updateData.invitationCode = userData.invitationCode;
+    }
+    if (userData.invites !== undefined) {
+        updateData.invites = JSON.stringify(userData.invites);
+    }
+    
+    await db.update(users)
+        .set(updateData)
+        .where(eq(users.id, userId));
+    
+    return (await getUser(userId))!;
 }
 
 
-export function hasWallet(userId: number) {
-    const user = getUser(userId);
-    return user && user.walletAddress !== null;
+export async function hasWallet(userId: number): Promise<boolean> {
+    const user = await getUser(userId);
+    return user !== undefined && user.walletAddress !== null;
 }
 
-export function hasFunds(userId: number) {
-    const user = getUser(userId);
-    return user && user.funds && user.funds > 0;
+export async function hasFunds(userId: number): Promise<boolean> {
+    const user = await getUser(userId);
+    return user !== undefined && user.funds > 0;
 }
 
-export function hasActiveBot(userId: number) {
-    const user = getUser(userId);
-    return user && user.botActiveSince !== null;
+export async function hasActiveBot(userId: number): Promise<boolean> {
+    const user = await getUser(userId);
+    return user !== undefined && user.botActiveSince !== null;
 }
 
 export function calculateInvestmentGrowth(
