@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": 1484391952,
+      "walletAddress": "TAxd1jc9KUugHFv4N3NYBeVix3qsfDrun8",
+      "funds": 20625.43112586513,
+      "botActiveSince": null,
+      "invitationCode": 495094,
+      "invites": [
+        495567
+      ]
+    },
+    {
+      "id": 1334391952,
+      "walletAddress": null,
+      "funds": 50,
+      "botActiveSince": null,
+      "invitationCode": 495567,
+      "invites": []
+    }
+  ]
+}
