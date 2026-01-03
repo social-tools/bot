@@ -74,8 +74,9 @@ if (BOT_MODE === "webhook") {
         res.end("OK");
       });
     } else {
-      res.writeHead(200);
-      res.end("OK");
+      // Health check endpoint for Render
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("Snipe Trader is running");
     }
   });
 

@@ -1,15 +1,6 @@
-import http from "http";
 import { DAILY_PERCENTAGE_GROWTH, telegramBot } from "./config";
 import { calculateDays, calculateInvestmentGrowth, calculatePercentageGrowth, createUser, findUserByInviteCode, formatAmount, getRandomItem, getUser, hasActiveBot, hasFunds, hasWallet, updateUser } from "./utils";
 
-const PORT = process.env.PORT || 4000;
-
-http.createServer(async (req, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("Snipe Trader is running");
-}).listen(PORT, () => {
-  console.log(`Listening on port ${PORT}`);
-});
 
 // New chat members command
 telegramBot.on("new_chat_members", async (msg) => {
